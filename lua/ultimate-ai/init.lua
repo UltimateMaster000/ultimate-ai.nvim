@@ -4,6 +4,7 @@ M.defaults = {}
 
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.defaults, opts or {})
+  vim.api.nvim_create_user_command("Prompt", function(prompt) M.MyPrompt(prompt)end, {})
   vim.api.nvim_create_user_command("UltimateAI", function(command)
     M.run_subcommand(command.fargs[1])
   end, {nargs = "*"})
@@ -67,7 +68,7 @@ vim.system(
   function(obj)
     if obj.stdout then
       local lines = vim.split(obj.stdout, "\n")
-      vim.schedule(function()
+       vim.schedule(function()
         vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
       end)
     end
@@ -80,6 +81,27 @@ local opts = {}
   M.ShowPopup(bufnr, cb)
 end
 
+function M.MyPrompt(prompt)
+  local bufnr = vim.api.nvim_create_buf(true, true)
+
+vim.system(
+  { "ollama", "run", "mistral", "give me 10 random words" },
+  { text = true },
+  function(obj)
+    if obj.stdout then
+      local lines = vim.split(obj.stdout, "\n")
+       vim.schedule(function()
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      end)
+    end
+  end
+)
+local opts = {}
+  local cb = function(_, sel)
+    print("it works")
+  end
+  M.ShowPopup(bufnr, cb)
+end
 
 
 return M
