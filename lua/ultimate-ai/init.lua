@@ -85,7 +85,7 @@ function M.MyPrompt(prompt)
   local bufnr = vim.api.nvim_create_buf(true, true)
 
 vim.system(
-  { "ollama", "run", "mistral", "give me 10 random words" },
+  { "ollama", "run", "mistral", prompt },
   { text = true },
   function(obj)
     if obj.stdout then
