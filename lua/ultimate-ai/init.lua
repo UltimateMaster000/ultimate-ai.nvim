@@ -23,7 +23,7 @@ function M.test()
   print("Test passed successfully!")
 end
 
-function ShowPopup(opts, callback)
+function M.ShowPopup(opts, callback)
   local popup = require("plenary.popup")
 
   local Window_id
@@ -44,17 +44,14 @@ function ShowPopup(opts, callback)
   })
 end
 
-function MyMenu()
+function M.MyMenu()
   local opts = {}
   local cb = function(_, sel)
     print("it works")
   end
-  ShowPopup(opts, cb)
+  M.ShowPopup(opts, cb)
 end
 
-function CloseMenu()
-  vim.api.nvim_win_close(Win_id, true)
-end
 
 
 return M
