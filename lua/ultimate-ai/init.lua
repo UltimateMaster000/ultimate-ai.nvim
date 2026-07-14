@@ -42,6 +42,20 @@ function M.ShowPopup(opts, callback)
     borderchars = borderchars,
     callback = callback,
   })
+
+  Window_id2 = popup.create(opts, {
+    title = "UltimateAIsubwindow",
+    highlight = "MyProjectWindow",
+    line = math.floor(((vim.o.lines - height) / 2) - 1),
+    col = math.floor((vim.o.columns - width) / 2),
+    minwidth = width,
+    minheight = height,
+    borderchars = borderchars,
+    callback = callback,
+    relative = "win",
+    win = Window_id,
+  })
+
 end
 
 function M.MyMenu()
