@@ -3,15 +3,18 @@ local M = {}
 M.defaults = {}
 
 function M.setup(opts)
-  print("hello from setup")
   M.config = vim.tbl_deep_extend("force", M.defaults, opts or {})
-  vim.api.nvim_create_user_command("SayHello", function()
-    M.say_hello()
-  end, {})
+  vim.api.nvim_create_user_command("UltimateAI", function(command)
+    M.run_subcommand(command.fargs[1])
+  end, {nargs = "*"})
 end
 
-function M.say_hello()
-  print("Hello!")
+function M.run_subcommand(subcmd)
+  if subcmd == "test" then
+    M.test()
+  else
+    print("Unknown command " .. (subcmd or ""))
+  end
 end
 
 
