@@ -31,12 +31,14 @@ function M.ShowPopup(opts, callback)
   local height = 20
   local width = 30
   local borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" }
+  local linemain =  math.floor(((vim.o.lines - height) / 2) - 1)
+  local colmain = math.floor((vim.o.columns - width) / 2)
 
   Window_id = popup.create(opts, {
     title = "UltimateAI",
     highlight = "MyProjectWindow",
-    line = math.floor(((vim.o.lines - height) / 2) - 1),
-    col = math.floor((vim.o.columns - width) / 2),
+    line = linemain,
+    col = colmain,
     minwidth = width,
     minheight = height,
     borderchars = borderchars,
@@ -46,14 +48,12 @@ function M.ShowPopup(opts, callback)
   Window_id2 = popup.create(opts, {
     title = "UltimateAIsubwindow",
     highlight = "MyProjectWindow",
-    line = 3,
-    col = -(width - 1),
+    line = linemain,
+    col = colmain + width + 1,
     minwidth = width,
     minheight = height,
     borderchars = borderchars,
     callback = callback,
-    relative = "win",
-    win = Window_id,
   })
 
 end
