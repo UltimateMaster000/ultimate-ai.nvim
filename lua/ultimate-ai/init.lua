@@ -4,7 +4,7 @@ M.defaults = {}
 
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.defaults, opts or {})
-  vim.api.nvim_create_user_command("Prompt", function(prompt) M.MyPrompt(prompt.fargs[1])end, {})
+  vim.api.nvim_create_user_command("Prompt", function(prompt) M.MyPrompt(prompt.args[1])end, {})
   vim.api.nvim_create_user_command("UltimateAI", function(command)
     M.run_subcommand(command.fargs[1])
   end, {nargs = "*"})
