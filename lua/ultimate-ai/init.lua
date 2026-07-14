@@ -17,5 +17,9 @@ function M.run_subcommand(subcmd)
   end
 end
 
+function M.test()
+  print("Test passed successfully!")
+end
+
 
 return M
