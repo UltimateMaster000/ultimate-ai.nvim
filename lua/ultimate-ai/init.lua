@@ -59,11 +59,25 @@ function M.ShowPopup(opts, callback)
 end
 
 function M.MyMenu()
-  local opts = {}
+  local bufnr = vim.api.nvim_create_buf(true, true)
+
+vim.system(
+  { "ollama", "run", "mistral", "give me 10 random words" },
+  { text = true },
+  function(obj)
+    if obj.stdout then
+      local lines = vim.split(obj.stdout, "\n")
+      vim.schedule(function()
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      end)
+    end
+  end
+)
+local opts = {}
   local cb = function(_, sel)
     print("it works")
   end
-  M.ShowPopup(opts, cb)
+  M.ShowPopup(bufnr, cb)
 end
 
 
