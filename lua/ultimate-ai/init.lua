@@ -49,7 +49,7 @@ function M.ShowPopup(opts, callback)
     title = "UltimateAIsubwindow",
     highlight = "MyProjectWindow",
     line = linemain,
-    col = colmain + width + 1,
+    col = colmain + width + 2,
     minwidth = width,
     minheight = height,
     borderchars = borderchars,
