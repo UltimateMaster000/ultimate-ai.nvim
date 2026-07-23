@@ -49,10 +49,10 @@ function M.ShowPopup(opts, callback)
   Window_id2 = popup.create(opts, {
     title = "UltimateAIsubwindow",
     highlight = "MyProjectWindow",
-    line = linemain,
-    col = colmain + width + 2,
+    line = linemain +height + 2,
+    col = colmain,
     minwidth = width,
-    minheight = height,
+    minheight = 10,
     borderchars = borderchars,
     callback = callback,
   })
