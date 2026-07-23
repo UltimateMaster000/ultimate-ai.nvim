@@ -14,7 +14,7 @@ function M.run_subcommand(subcmd)
   if subcmd == "test" then
     M.test()
   elseif subcmd == "popup" then
-    M.MyMenu()
+    M.stream_test_to_popup()
   else
     print("Unknown command " .. (subcmd or ""))
   end
@@ -52,7 +52,7 @@ function M.ShowPopup(opts, callback)
     line = linemain +height + 2,
     col = colmain,
     minwidth = width,
-    minheight = 10,
+    minheight = 5,
     borderchars = borderchars,
     callback = callback,
   })
@@ -103,5 +103,63 @@ local opts = {}
   M.ShowPopup(bufnr, cb)
 end
 
+function M.stream_test_to_popup(cmd_args)
+  -- 1. Create an unlisted, scratch buffer for the popup output
+  local bufnr = vim.api.nvim_create_buf(false, true)
+
+  -- 2. Open the popup with the newly created buffer
+  M.ShowPopup(bufnr, function(_, sel)
+    print("Popup closed")
+  end)
+
+  -- Default command to test streaming if none is passed
+  cmd_args = cmd_args or { "sh", "-c", "for i in $(seq 1 10); do echo \"Streaming chunk $i...\"; sleep 0.2; done" }
+
+  -- Track stdout line leftovers across chunks
+  local partial_line = ""
+
+  -- 3. Run the async job with streaming stdout enabled
+  vim.system(
+    cmd_args,
+    {
+      text = true,
+      stdout = function(err, data)
+        if err or not data then return end
+
+        -- Combine with leftover data from the previous chunk
+        local content = partial_line .. data
+        local lines = vim.split(content, "\n", { plain = true })
+
+        -- Save incomplete trailing line for the next chunk
+        partial_line = lines[#lines]
+        table.remove(lines, #lines)
+
+        if #lines > 0 then
+          vim.schedule(function()
+            -- Verify buffer is still valid before writing
+            if vim.api.nvim_buf_is_valid(bufnr) then
+              -- Get current end of buffer line count
+              local line_count = vim.api.nvim_buf_line_count(bufnr)
+              -- Handle replacing the initial empty line if the buffer is fresh
+              if line_count == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "" then
+                vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+              else
+                vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, lines)
+              end
+            end
+          end)
+        end
+      end,
+    },
+    function(obj)
+      -- Optional cleanup or final notification when the system command finishes
+      vim.schedule(function()
+        if vim.api.nvim_buf_is_valid(bufnr) and partial_line ~= "" then
+          vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, { partial_line })
+        end
+      end)
+    end
+  )
+end
 
 return M
