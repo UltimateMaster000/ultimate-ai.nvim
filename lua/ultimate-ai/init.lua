@@ -104,7 +104,7 @@ local opts = {}
 end
 
 function M.stream_test_to_popup(cmd_args)
-  -- 1. Create an unlisted, scratch buffer for the popup output
+  -- 1. Create an unlisted, scratch buffer for the popup window
   local bufnr = vim.api.nvim_create_buf(false, true)
 
   -- 2. Open the popup with the newly created buffer
@@ -112,55 +112,50 @@ function M.stream_test_to_popup(cmd_args)
     print("Popup closed")
   end)
 
-  -- Default command fallback adapted for Windows vs Unix
+  -- Default command fallback for testing word-by-word streaming
   if not cmd_args then
     if vim.fn.has("win32") == 1 then
-      -- Windows PowerShell test loop
-      cmd_args = { "powershell", "-Command", "1..10 | ForEach-Object { Write-Output \"Streaming chunk $_...\"; Start-Sleep -Milliseconds 200 }" }
+      -- PowerShell command outputting word by word
+      cmd_args = { "powershell", "-Command", "$words = 'Hello world this is streaming word by word into neovim'.Split(' '); foreach ($w in $words) { Write-Host -NoNewline \"$w \"; Start-Sleep -Milliseconds 150 }" }
     else
-      -- Unix/Linux/macOS sh test loop
-      cmd_args = { "sh", "-c", "for i in $(seq 1 10); do echo \"Streaming chunk $i...\"; sleep 0.2; done" }
+      -- Unix sh command outputting word by word
+      cmd_args = { "sh", "-c", "for w in Hello world this is streaming word by word into neovim; do printf '%s ' \"$w\"; sleep 0.15; done" }
     end
   end
 
-  local partial_line = ""
-
-  -- 3. Run the async job with streaming stdout enabled
+  -- 3. Run async job streaming text as raw tokens
   vim.system(
     cmd_args,
     {
       text = true,
       stdout = function(err, data)
-        if err or not data then return end
+        if err or not data or data == "" then return end
 
-        local content = partial_line .. data
-        local lines = vim.split(content, "[\r\n]+", { trimempty = false })
+        vim.schedule(function()
+          if not vim.api.nvim_buf_is_valid(bufnr) then return end
 
-        partial_line = lines[#lines]
-        table.remove(lines, #lines)
+          -- Split incoming chunk on newline boundaries
+          local incoming_lines = vim.split(data, "[\r\n]", { plain = false })
+          local line_count = vim.api.nvim_buf_line_count(bufnr)
 
-        if #lines > 0 then
-          vim.schedule(function()
-            if vim.api.nvim_buf_is_valid(bufnr) then
-              local line_count = vim.api.nvim_buf_line_count(bufnr)
-              
-              if line_count == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "" then
-                vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-              else
-                vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, lines)
-              end
+          -- Get the current text of the very last line in the buffer
+          local last_line = vim.api.nvim_buf_get_lines(bufnr, line_count - 1, line_count, false)[1] or ""
+
+          -- Append the first fragment of incoming data directly to the existing last line
+          local updated_last_line = last_line .. incoming_lines[1]
+          vim.api.nvim_buf_set_lines(bufnr, line_count - 1, line_count, false, { updated_last_line })
+
+          -- If the incoming chunk contained newlines, append remaining lines as new buffer lines
+          if #incoming_lines > 1 then
+            local rest_lines = {}
+            for i = 2, #incoming_lines do
+              table.insert(rest_lines, incoming_lines[i])
             end
-          end)
-        end
+            vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, rest_lines)
+          end
+        end)
       end,
-    },
-    function(obj)
-      vim.schedule(function()
-        if vim.api.nvim_buf_is_valid(bufnr) and partial_line ~= "" then
-          vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, { partial_line })
-        end
-      end)
-    end
+    }
   )
 end
 return M
