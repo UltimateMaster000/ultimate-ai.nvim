@@ -104,47 +104,62 @@ local opts = {}
 end
 
 function M.stream_test_to_popup(prompt)
-  -- Default prompt if none provided
-  prompt = prompt or "give me 500 word story"
+  prompt = prompt or "give me 100 random words"
 
-  -- 1. Create an unlisted scratch buffer
   local bufnr = vim.api.nvim_create_buf(false, true)
 
-  -- 2. Open popup with buffer
   M.ShowPopup(bufnr, function(_, sel)
     print("Popup closed")
   end)
 
-  -- 3. Run Ollama with streaming stdout
+  -- Use curl to hit Ollama's HTTP API directly
   vim.system(
-    { "ollama", "run", "mistral", prompt },
+    {
+      "curl",
+      "-s",
+      "-N",
+      "http://localhost:11434/api/generate",
+      "-d",
+      vim.json.encode({
+        model = "mistral",
+        prompt = prompt,
+        stream = true,
+      }),
+    },
     {
       text = true,
-      env = { TERM = "dumb" },
       stdout = function(err, data)
         if err or not data or data == "" then return end
 
         vim.schedule(function()
           if not vim.api.nvim_buf_is_valid(bufnr) then return end
 
-          -- Split incoming text chunk across any newlines
-          local incoming_lines = vim.split(data, "[\r\n]", { plain = false })
-          local line_count = vim.api.nvim_buf_line_count(bufnr)
+          -- Ollama API streams lines of JSON: {"response": "word", "done": false}
+          for _, raw_line in ipairs(vim.split(data, "[\r\n]", { plain = false })) do
+            if raw_line ~= "" then
+              local ok, json = pcall(vim.json.decode, raw_line)
+              if ok and json and json.response then
+                local token = json.response
 
-          -- Get current text on the buffer's last line
-          local last_line = vim.api.nvim_buf_get_lines(bufnr, line_count - 1, line_count, false)[1] or ""
+                -- Split on newlines if the generated token contains line breaks
+                local incoming_lines = vim.split(token, "[\r\n]", { plain = false })
+                local line_count = vim.api.nvim_buf_line_count(bufnr)
 
-          -- Append first incoming chunk piece to the existing last line
-          local updated_last_line = last_line .. incoming_lines[1]
-          vim.api.nvim_buf_set_lines(bufnr, line_count - 1, line_count, false, { updated_last_line })
+                -- Append chunk to current buffer line
+                local last_line = vim.api.nvim_buf_get_lines(bufnr, line_count - 1, line_count, false)[1] or ""
+                local updated_last_line = last_line .. incoming_lines[1]
+                vim.api.nvim_buf_set_lines(bufnr, line_count - 1, line_count, false, { updated_last_line })
 
-          -- If chunk contained newlines, insert subsequent items as new buffer lines
-          if #incoming_lines > 1 then
-            local rest_lines = {}
-            for i = 2, #incoming_lines do
-              table.insert(rest_lines, incoming_lines[i])
+                -- Handle multiline responses
+                if #incoming_lines > 1 then
+                  local rest_lines = {}
+                  for i = 2, #incoming_lines do
+                    table.insert(rest_lines, incoming_lines[i])
+                  end
+                  vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, rest_lines)
+                end
+              end
             end
-            vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, rest_lines)
           end
         end)
       end,
