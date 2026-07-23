@@ -63,7 +63,7 @@ function M.MyMenu()
   local bufnr = vim.api.nvim_create_buf(true, true)
 
 vim.system(
-  { "ollama", "run", "mistral", "give me 10 random words" },
+  { "ollama", "run", "mistral", "300 word short story" },
   { text = true },
   function(obj)
     if obj.stdout then
