@@ -120,6 +120,7 @@ function M.stream_test_to_popup(prompt)
     { "ollama", "run", "mistral", prompt },
     {
       text = true,
+      env = { TERM = "dumb" },
       stdout = function(err, data)
         if err or not data or data == "" then return end
 
