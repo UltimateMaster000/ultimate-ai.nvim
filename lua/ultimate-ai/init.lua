@@ -103,29 +103,21 @@ local opts = {}
   M.ShowPopup(bufnr, cb)
 end
 
-function M.stream_test_to_popup(cmd_args)
-  -- 1. Create an unlisted, scratch buffer for the popup window
+function M.stream_test_to_popup(prompt)
+  -- Default prompt if none provided
+  prompt = prompt or "give me 100 random words"
+
+  -- 1. Create an unlisted scratch buffer
   local bufnr = vim.api.nvim_create_buf(false, true)
 
-  -- 2. Open the popup with the newly created buffer
+  -- 2. Open popup with buffer
   M.ShowPopup(bufnr, function(_, sel)
     print("Popup closed")
   end)
 
-  -- Default command fallback for testing word-by-word streaming
-  if not cmd_args then
-    if vim.fn.has("win32") == 1 then
-      -- PowerShell command outputting word by word
-      cmd_args = { "powershell", "-Command", "$words = 'Hello world this is streaming word by word into neovim'.Split(' '); foreach ($w in $words) { Write-Host -NoNewline \"$w \"; Start-Sleep -Milliseconds 150 }" }
-    else
-      -- Unix sh command outputting word by word
-      cmd_args = { "sh", "-c", "for w in Hello world this is streaming word by word into neovim; do printf '%s ' \"$w\"; sleep 0.15; done" }
-    end
-  end
-
-  -- 3. Run async job streaming text as raw tokens
+  -- 3. Run Ollama with streaming stdout
   vim.system(
-    cmd_args,
+    { "ollama", "run", "mistral", prompt },
     {
       text = true,
       stdout = function(err, data)
@@ -134,18 +126,18 @@ function M.stream_test_to_popup(cmd_args)
         vim.schedule(function()
           if not vim.api.nvim_buf_is_valid(bufnr) then return end
 
-          -- Split incoming chunk on newline boundaries
+          -- Split incoming text chunk across any newlines
           local incoming_lines = vim.split(data, "[\r\n]", { plain = false })
           local line_count = vim.api.nvim_buf_line_count(bufnr)
 
-          -- Get the current text of the very last line in the buffer
+          -- Get current text on the buffer's last line
           local last_line = vim.api.nvim_buf_get_lines(bufnr, line_count - 1, line_count, false)[1] or ""
 
-          -- Append the first fragment of incoming data directly to the existing last line
+          -- Append first incoming chunk piece to the existing last line
           local updated_last_line = last_line .. incoming_lines[1]
           vim.api.nvim_buf_set_lines(bufnr, line_count - 1, line_count, false, { updated_last_line })
 
-          -- If the incoming chunk contained newlines, append remaining lines as new buffer lines
+          -- If chunk contained newlines, insert subsequent items as new buffer lines
           if #incoming_lines > 1 then
             local rest_lines = {}
             for i = 2, #incoming_lines do
