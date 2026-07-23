@@ -105,7 +105,7 @@ end
 
 function M.stream_test_to_popup(prompt)
   -- Default prompt if none provided
-  prompt = prompt or "give me 100 random words"
+  prompt = prompt or "give me 500 word story"
 
   -- 1. Create an unlisted scratch buffer
   local bufnr = vim.api.nvim_create_buf(false, true)
