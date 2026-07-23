@@ -104,7 +104,7 @@ local opts = {}
 end
 
 function M.stream_test_to_popup(prompt)
-  prompt = prompt or "give me 100 random words"
+  prompt = prompt or "300 word short story"
 
   local bufnr = vim.api.nvim_create_buf(false, true)
 
